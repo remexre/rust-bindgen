@@ -2064,7 +2064,10 @@ options! {
     custom_const_pointer_type: Option<String> {
         methods: {
             /// Sets the given type to be used instead of const pointers.
-            pub fn custom_const_pointer_type<T: Into<String>>(mut self, custom_const_pointer_type: Option<T>) -> Self {
+            pub fn custom_const_pointer_type<T: Into<String>>(
+                mut self,
+                custom_const_pointer_type: Option<T>,
+            ) -> Self {
                 self.options.custom_const_pointer_type = custom_const_pointer_type.map(|s| s.into());
                 self
             }
@@ -2075,11 +2078,28 @@ options! {
     custom_mut_pointer_type: Option<String> {
         methods: {
             /// Sets the given type to be used instead of mut pointers.
-            pub fn custom_mut_pointer_type<T: Into<String>>(mut self, custom_mut_pointer_type: Option<T>) -> Self {
+            pub fn custom_mut_pointer_type<T: Into<String>>(
+                mut self,
+                custom_mut_pointer_type: Option<T>,
+            ) -> Self {
                 self.options.custom_mut_pointer_type = custom_mut_pointer_type.map(|s| s.into());
                 self
             }
         },
         as_args: "--custom-mut-pointer-type",
+    },
+    /// A type to use for function pointers.
+    custom_function_pointer_type: Option<String> {
+        methods: {
+            /// Sets the given type to be used instead of function pointers.
+            pub fn custom_function_pointer_type<T: Into<String>>(
+                mut self,
+                custom_function_pointer_type: Option<T>,
+            ) -> Self {
+                self.options.custom_function_pointer_type = custom_function_pointer_type.map(|s| s.into());
+                self
+            }
+        },
+        as_args: "--custom-function-pointer-type",
     }
 }

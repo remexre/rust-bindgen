@@ -3855,14 +3855,29 @@ impl TryToRustTy for Type {
                 })
             }
             TypeKind::Function(ref signature) => {
-                // We can't rely on the sizeof(Option<NonZero<_>>) ==
-                // sizeof(NonZero<_>) optimization with opaque blobs (because
-                // they aren't NonZero), so don't *ever* use an or_opaque
-                // variant here.
-                let ty = signature.try_to_rust_ty(ctx, item)?;
+                if let Some(wrapper) =
+                    ctx.options().custom_function_pointer_type.as_ref()
+                {
+                    let wrapper = ctx.rust_ident_raw(wrapper);
+                    let ret = utils::fnsig_return_ty_to_rust_ty(ctx, signature);
+                    let arguments = signature
+                        .argument_types()
+                        .iter()
+                        .map(|(_, ty)| utils::fnsig_argument_type(ctx, ty));
+                    // TODO: This throws away varargs and ABI.
+                    Ok(
+                        syn::parse_quote! { #wrapper < ( #( #arguments, )* ) , #ret > },
+                    )
+                } else {
+                    // We can't rely on the sizeof(Option<NonZero<_>>) ==
+                    // sizeof(NonZero<_>) optimization with opaque blobs (because
+                    // they aren't NonZero), so don't *ever* use an or_opaque
+                    // variant here.
+                    let ty = signature.try_to_rust_ty(ctx, item)?;
 
-                let prefix = ctx.trait_prefix();
-                Ok(syn::parse_quote! { ::#prefix::option::Option<#ty> })
+                    let prefix = ctx.trait_prefix();
+                    Ok(syn::parse_quote! { ::#prefix::option::Option<#ty> })
+                }
             }
             TypeKind::Array(item, len) | TypeKind::Vector(item, len) => {
                 let ty = item.try_to_rust_ty(ctx, &())?;
@@ -5201,7 +5216,7 @@ pub(crate) mod utils {
         })
     }
 
-    fn fnsig_return_ty_internal(
+    pub(crate) fn fnsig_return_ty_to_rust_ty(
         ctx: &BindgenContext,
         sig: &FunctionSig,
     ) -> syn::Type {
@@ -5229,7 +5244,7 @@ pub(crate) mod utils {
         ctx: &BindgenContext,
         sig: &FunctionSig,
     ) -> proc_macro2::TokenStream {
-        match fnsig_return_ty_internal(ctx, sig) {
+        match fnsig_return_ty_to_rust_ty(ctx, sig) {
             syn::Type::Tuple(syn::TypeTuple { elems, .. })
                 if elems.is_empty() =>
             {
@@ -5370,7 +5385,7 @@ pub(crate) mod utils {
             arg_item.to_rust_ty_or_opaque(ctx, &())
         });
 
-        let ret_ty = fnsig_return_ty_internal(ctx, sig);
+        let ret_ty = fnsig_return_ty_to_rust_ty(ctx, sig);
         quote! {
             *const ::block::Block<(#(#args,)*), #ret_ty>
         }
